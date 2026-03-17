@@ -94,4 +94,5 @@ AI opponent mode
 ## Author
 
 Anushka Dhakad
+
 Passionate about creative web development, game design, and building impactful projects.
