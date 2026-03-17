@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Palindrome Universe | Room Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        :root { --p1: #00f2ff; --p2: #ff007b; --gold: #ffd700; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Orbitron'; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
+        
+        .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 10; }
+        .hidden { display: none !important; }
+
+        .box { background: rgba(10, 10, 30, 0.95); border: 2px solid #333; padding: 30px; border-radius: 25px; width: 420px; text-align: center; box-shadow: 0 0 50px #000; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #444; color: #fff; border-radius: 8px; font-family: 'Orbitron'; outline: none; }
+        .btn { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 10px; font-family: 'Bungee'; cursor: pointer; transition: 0.3s; }
+        .btn-main { background: var(--p1); color: #000; }
+        .btn-online { background: var(--p2); color: #fff; }
+
+        .arena { width: 95vw; height: 90vh; display: flex; position: relative; border: 2px solid #222; border-radius: 30px; }
+        .side { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; opacity: 0.2; }
+        .active-side { opacity: 1; background: rgba(255,255,255,0.03); }
+        .score { font-size: 5rem; font-family: 'Bungee'; margin: 0; }
+        .console { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 340px; text-align: center; z-index: 100; background: #050505; padding: 25px; border-radius: 25px; border: 2px solid #444; }
+
+        .diamonds { font-size: 1.8rem; margin-top: 10px; }
+        .winner-txt { font-family: 'Bungee'; font-size: 2.5rem; color: var(--gold); text-shadow: 0 0 20px var(--gold); margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <div id="page1" class="screen">
+        <div class="box">
+            <h1 style="font-family:'Bungee'; color:var(--p1); margin:0;">MISSION SIGNUP</h1>
+            <div id="basic-info">
+                <input type="text" id="name" placeholder="YOUR NAME">
+                <input type="number" id="age" placeholder="AGE">
+                <select id="diff">
+                    <option value="3">EASY (3+ LETTERS)</option>
+                    <option value="5">MEDIUM (5+ LETTERS)</option>
+                    <option value="7">HARD (7+ LETTERS)</option>
+                </select>
+                <button class="btn btn-main" onclick="showLocalOptions()">OFFLINE DUEL</button>
+                <button class="btn btn-online" onclick="showOnlineOptions()">ONLINE ARENA</button>
+            </div>
+            <div id="online-options" class="hidden">
+                <p style="font-size: 0.8rem; color: var(--p2); font-family: 'Bungee';">MULTIPLAYER HUB</p>
+                <button class="btn btn-online" onclick="createRoom()">CREATE ROOM</button>
+                <div style="margin: 10px 0; border-top: 1px solid #333; padding-top: 10px;">
+                    <input type="text" id="room-id-input" placeholder="ENTER ROOM CODE">
+                    <button class="btn btn-online" onclick="joinRoom()">JOIN ROOM</button>
+                </div>
+                <button class="btn" onclick="backToSignup()" style="background:#222; color:#fff; font-size:0.7rem;">BACK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="page2" class="screen hidden" style="background:none;">
+        <div class="arena">
+            <div id="side0" class="side active-side">
+                <h2 id="n0" style="color:var(--p1)">P1</h2>
+                <p id="s0" class="score" style="color:var(--p1)">00</p>
+                <div id="l0" class="diamonds">💎💎💎</div>
+                <p id="w0" style="color:var(--gold); font-weight:bold;"></p>
+            </div>
+            <div class="console">
+                <p id="room-tag" style="color:var(--gold); font-size:0.7rem; margin-bottom:5px; font-weight:bold;"></p>
+                <input type="text" id="word-in" placeholder="TYPE WORD..." autocomplete="off">
+                <button class="btn btn-main" onclick="handleTransmit()">TRANSMIT</button>
+                <button class="btn" onclick="getHint()" style="background:#333; color:#fff; font-size:0.7rem; margin-top:5px;">HINT</button>
+                <p id="turn-display" style="font-size:0.7rem; margin-top:10px; color:var(--p1);">CHANCE: P1</p>
+            </div>
+            <div id="side1" class="side">
+                <h2 id="n1" style="color:var(--p2)">P2</h2>
+                <p id="s1" class="score" style="color:var(--p2)">00</p>
+                <div id="l1" class="diamonds">💎💎💎</div>
+                <p id="w1" style="color:var(--gold); font-weight:bold;"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="page3" class="screen hidden">
+        <h1 style="font-family:'Bungee';">LEADERBOARD</h1>
+        <div class="box" id="final-stats"></div>
+        <div id="winner-crown" class="winner-txt"></div>
+        <div style="display:flex; gap:10px; width:400px;">
+            <button class="btn btn-main" onclick="location.reload()">PLAY AGAIN</button>
+            <button class="btn" style="background:#444; color:#fff;" onclick="location.href='/'">HOME</button>
+        </div>
+    </div>
+
+    <audio id="snd-right" src="https://noproblo.day/sounds/correct.mp3" preload="auto"></audio>
+    <audio id="snd-wrong" src="https://noproblo.day/sounds/wrong.mp3" preload="auto"></audio>
+
+    <script>
+        const socket = typeof io !== 'undefined' ? io() : null;
+        let gameMode = "offline";
+        let myName = "";
+        let currentRoom = "";
+        let turn = 0;
+        let minSize = 3;
+        let players = [{n:"P1", s:0, l:3}, {n:"P2", s:0, l:3}];
+
+        const sRight = document.getElementById('snd-right');
+        const sWrong = document.getElementById('snd-wrong');
+
+        // Fix: Audio Unlock on first click
+        function unlockAudio() {
+            sRight.play().then(() => { sRight.pause(); sRight.currentTime = 0; });
+            sWrong.play().then(() => { sWrong.pause(); sWrong.currentTime = 0; });
+            window.removeEventListener('mousedown', unlockAudio);
+        }
+        window.addEventListener('mousedown', unlockAudio);
+
+        function playSound(isCorrect) {
+            const sound = isCorrect ? sRight : sWrong;
+            sound.currentTime = 0;
+            sound.play().catch(e => console.log("Audio play blocked", e));
+        }
+
+        function showOnlineOptions() {
+            const n = document.getElementById('name').value;
+            const a = document.getElementById('age').value;
+            if(!n || !a) return alert("Pehle Name aur Age bharo!");
+            document.getElementById('basic-info').classList.add('hidden');
+            document.getElementById('online-options').classList.remove('hidden');
+        }
+
+        function backToSignup() {
+            document.getElementById('online-options').classList.add('hidden');
+            document.getElementById('basic-info').classList.remove('hidden');
+        }
+
+        function createRoom() {
+            myName = document.getElementById('name').value.toUpperCase();
+            gameMode = "online";
+            const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+            currentRoom = randomCode;
+            if(socket) socket.emit('join', { name: myName, room: currentRoom });
+            startArena();
+            document.getElementById('room-tag').innerText = "ROOM: " + currentRoom;
+        }
+
+        function joinRoom() {
+            myName = document.getElementById('name').value.toUpperCase();
+            currentRoom = document.getElementById('room-id-input').value;
+            if(!currentRoom) return alert("Code dalo!");
+            gameMode = "online";
+            if(socket) socket.emit('join', { name: myName, room: currentRoom });
+            startArena();
+            document.getElementById('room-tag').innerText = "ROOM: " + currentRoom;
+        }
+
+        function showLocalOptions() {
+            myName = document.getElementById('name').value.toUpperCase() || "PLAYER 1";
+            gameMode = "offline";
+            players[0].n = myName;
+            players[1].n = "PLAYER 2";
+            startArena();
+        }
+
+        function startArena() {
+            minSize = parseInt(document.getElementById('diff').value);
+            document.getElementById('page1').classList.add('hidden');
+            document.getElementById('page2').classList.remove('hidden');
+            updateUI();
+        }
+
+        function handleTransmit() {
+            const input = document.getElementById('word-in');
+            const val = input.value.trim().toUpperCase();
+            if(val.length < minSize) return alert("Chota word hai!");
+
+            if(gameMode === "online" && socket) {
+                socket.emit('submitWord', { word: val, room: currentRoom, sender: myName });
+            } else {
+                processWord(val);
+            }
+            input.value = "";
+        }
+
+        function processWord(val) {
+            const isP = val === val.split('').reverse().join('');
+            document.getElementById('w'+turn).innerText = val;
+            
+            if(isP) {
+                players[turn].s += 100;
+                playSound(true);
+                confetti({ particleCount: 80, origin: { x: turn === 0 ? 0.2 : 0.8 } });
+            } else {
+                players[turn].l--;
+                playSound(false);
+            }
+
+            if(players[turn].l <= 0) return showLeaderboard();
+            turn = turn === 0 ? 1 : 0;
+            updateUI();
+        }
+
+        function updateUI() {
+            for(let i=0; i<2; i++) {
+                document.getElementById('n'+i).innerText = players[i].n;
+                document.getElementById('s'+i).innerText = players[i].s.toString().padStart(2, '0');
+                document.getElementById('l'+i).innerText = "💎".repeat(players[i].l);
+                document.getElementById('side'+i).classList.toggle('active-side', turn === i);
+            }
+            document.getElementById('turn-display').innerText = players[turn].n + "'S CHANCE";
+        }
+
+        // Online Listeners
+        if(socket) {
+            socket.on('wordResult', (data) => {
+                // Ye event tab chalega jab koi bhi player word submit karega
+                document.getElementById('w'+turn).innerText = data.word;
+                if(data.isCorrect) {
+                    players[turn].s += 100;
+                    playSound(true);
+                    if(data.sender === myName) confetti({ particleCount: 100 });
+                } else {
+                    players[turn].l--;
+                    playSound(false);
+                }
+                if(players[turn].l <= 0) return showLeaderboard();
+                turn = turn === 0 ? 1 : 0;
+                updateUI();
+            });
+
+            socket.on('updateLeaderboard', (roomPlayers) => {
+                roomPlayers.forEach((p, i) => {
+                    if(i < 2) {
+                        players[i].n = p.name;
+                        players[i].s = p.score;
+                        players[i].l = p.lives;
+                    }
+                });
+                updateUI();
+            });
+        }
+
+        function getHint() {
+            const h = ["RADAR", "KAYAK", "LEVEL", "ROTOR", "DEED"];
+            alert("TRY: " + h[Math.floor(Math.random()*h.length)]);
+        }
+
+        function showLeaderboard() {
+            document.getElementById('page2').classList.add('hidden');
+            document.getElementById('page3').classList.remove('hidden');
+            const stats = document.getElementById('final-stats');
+            stats.innerHTML = `<h2>${players[0].n}: ${players[0].s}</h2><h2>${players[1].n}: ${players[1].s}</h2>`;
+            const winName = players[0].s >= players[1].s ? players[0].n : players[1].n;
+            document.getElementById('winner-crown').innerText = winName + " WINS!";
+        }
+
+        // Animated BG
+        const canvas = document.getElementById('bg-canvas');
+        const c = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let stars = Array(150).fill().map(() => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, r: Math.random()*2 }));
+        function draw() {
+            c.fillStyle = '#000'; c.fillRect(0,0,canvas.width,canvas.height);
+            c.fillStyle = '#fff';
+            stars.forEach(s => { c.beginPath(); c.arc(s.x, s.y, s.r, 0, Math.PI*2); c.fill(); s.y += 0.5; if(s.y > canvas.height) s.y = 0; });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
