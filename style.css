@@ -1,0 +1,45 @@
+* { box-sizing: border-box; }
+:root { --p1: #00f2ff; --p2: #ff007b; }
+body { margin: 0; background: #000; color: #fff; font-family: 'Orbitron', sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+#bg-canvas { position: fixed; inset: 0; z-index: -1; }
+
+.game-wrapper { 
+    width: 85vw; height: 85vh; max-width: 1000px; 
+    background: rgba(5, 5, 20, 0.9); border: 2px solid #333; 
+    border-radius: 30px; position: relative; overflow: hidden;
+}
+
+.screen { display: none; height: 100%; width: 100%; flex-direction: column; align-items: center; justify-content: center; }
+.active-screen { display: flex !important; }
+
+.main-title { font-family: 'Bungee'; font-size: 4rem; color: var(--p1); text-shadow: 0 0 20px var(--p1); margin: 0; }
+.sub-title { letter-spacing: 5px; color: #444; margin-bottom: 30px; }
+
+.input-group { width: 320px; display: flex; flex-direction: column; gap: 10px; }
+
+.battle-arena { display: flex; width: 100%; height: 100%; }
+.player-side { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.p1-side { border-right: 1px solid #222; }
+.p-score { font-size: 5rem; font-family: 'Bungee'; margin: 10px 0; text-shadow: 0 0 15px currentColor; }
+
+.console { 
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 350px; background: #050505; border: 1px solid #444; 
+    padding: 30px; border-radius: 30px; z-index: 10;
+}
+
+.timer-bar { width: 100%; height: 8px; background: #111; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+#t-fill { width: 100%; height: 100%; background: #fff; }
+
+input { 
+    width: 100%; background: #000; border: 1px solid #333; color: #fff; 
+    padding: 15px; text-align: center; border-radius: 12px; font-family: 'Orbitron'; margin-bottom: 10px;
+}
+
+.btn { width: 100%; padding: 15px; font-family: 'Bungee'; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+.btn-check { background: var(--p1); color: #000; }
+.btn-hint { background: #111; color: #444; margin-top: 10px; font-size: 0.8rem; }
+.btn-hint.unlocked { color: #ffcc00; border: 1px solid #ffcc00; }
+
+.overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 100; }
+.rule-box { background: #111; padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; }
